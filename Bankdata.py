@@ -80,6 +80,7 @@ class Bankapp():
             4. Transfer
             5. Transaction History
             6. Changepassword
+            7. Delete Account
             #. Exit
 
          ''')
@@ -97,6 +98,8 @@ class Bankapp():
            self.History()
        elif option == '6':
             self.Changepassword()
+       elif option == '7':
+            self.Delete()
        elif option == '#':
              exit()  
 
@@ -141,7 +144,7 @@ class Bankapp():
         while True:
             email = input("Email: ").strip()
 
-    # Trying to Check if the email exists in the database
+    
             query = "SELECT password FROM customer WHERE email = %s"
             val = (email,)
             mycursor.execute(query, val)
@@ -152,7 +155,7 @@ class Bankapp():
             else:
                 break
 
-    # Trying to Get a new password from the user
+ 
         while True:
             newPassword = input("New Password: ").strip()
             retrypsw = input("Enter New Password Again: ").strip()
@@ -162,7 +165,7 @@ class Bankapp():
             else:
                 break
 
-    # Trying to Update the password in the database
+    
         query2 = "UPDATE customer SET password = %s WHERE email = %s"
         val2 = (newPassword, email)
         mycursor.execute(query2, val2)
@@ -204,7 +207,6 @@ class Bankapp():
        
 
    def Withdraw(self):
-    # Step 1: Fetch the current account balance for the user
     query = "SELECT account_balance FROM customer WHERE email = %s"
     val = (self.email,)
     mycursor.execute(query, val)
@@ -215,29 +217,26 @@ class Bankapp():
     
     balance = detail[0]
 
-    # Step 2: Ask for withdrawal amount
     try:
         withdraw = float(input('Enter amount to withdraw: '))
     except ValueError:
         print("Invalid input. Please enter a valid amount.")
         return
 
-    # Step 3: Check if the balance is sufficient for withdrawal
     if balance >= withdraw:
-        # Step 4: Calculate new balance after withdrawal
         new_balance = balance - withdraw
 
-        # Step 5: Update the account balance in the database
+        
         query2 = "UPDATE customer SET account_balance = %s WHERE email = %s"
         val2 = (new_balance, self.email)
         try:
             mycursor.execute(query2, val2)
-            self.balance = new_balance  # Update local balance after withdrawal
+            self.balance = new_balance  
         except Exception as e:
             print(f"An error occurred while updating balance: {e}")
             return
         
-        # Step 6: Log the transaction in the transaction table
+        
         query3 = "INSERT INTO transaction (transaction_type, amount, sender, receiver,  email) VALUES (%s, %s, %s, %s, %s)"
         val3 = ('Withdraw', withdraw, self.fullname, self.fullname, self.email)
 
@@ -249,18 +248,17 @@ class Bankapp():
     else:
         print("Insufficient fund")  
     
-    # Step 7: Ask for the next action (continue or logout)
+    
     self.option = input('Press 1 to continue or 2 to logout: ')
     if self.option == '1':
-        self.dashboard2()  # Redirect to the dashboard
+        self.dashboard2()  
     else:
         print("Signing out...")
 
    def Transfer(self):
-    # Prompt for the receiver account number
     receiver_acct = input('Enter receiver account number: ')
 
-    # Query to get receiver's fullname and current balance
+    
     query = "SELECT fullname, account_balance FROM customer WHERE account_number = %s"
     val = (receiver_acct,)
     mycursor.execute(query, val)
@@ -270,29 +268,25 @@ class Bankapp():
         print("Receiver account not found.")
           
 
-    receiver_fullname, receiver_balance = detail  # Unpack fullname and balance
+    receiver_fullname, receiver_balance = detail  
 
-    # Prompt for transfer amount
+   
     transfer = float(input('Enter amount to transfer: '))
 
     if self.balance >= transfer:
-        # Calculate the new sender balance first, before using it
         receiver_balance = self.balance - transfer 
 
-        # Update the receiver's account balance
         query_receiver = "UPDATE customer SET account_balance = account_balance + %s WHERE account_number = %s"
         val_receiver = (transfer, receiver_acct)
         mycursor.execute(query_receiver, val_receiver)
 
-        # Update the sender's (current user's) account balance
         query_update_sender = "UPDATE customer SET account_balance = %s WHERE email = %s"
         val_update_sender = (receiver_balance, self.email)
         mycursor.execute(query_update_sender, val_update_sender)
 
-        # Update the current user's balance in the instance attribute
-        self.balance = receiver_balance  # Update the instance attribute
+        
+        self.balance = receiver_balance  
 
-        # Print confirmation of the transaction
         print(f'Transfer of #{transfer:.2f} to {receiver_fullname} ({receiver_acct}) is successful.\nYour current account balance is #{self.balance:.2f}')
 
         query3 = "INSERT INTO transaction (transaction_type, amount, sender, receiver, email) VALUES (%s, %s, %s, %s, %s)"
@@ -304,7 +298,6 @@ class Bankapp():
     else:
         print('Insufficient Balance')
 
-    # Ask user to continue or log out
     self.option = input('Press 1 to continue or 2 to logout: ')
     if self.option == '1':
         self.dashboard2()
@@ -337,12 +330,10 @@ class Bankapp():
    def History(self):
     print(f'Transaction History for {self.fullname}')
     
-    # Define the SQL query to fetch transaction history
     query = "SELECT transaction_type, amount, sender, receiver, transaction_date FROM transaction WHERE email = %s"
-    val = (self.email,)  # Ensure val is a tuple
+    val = (self.email,)  
     
     try:
-        # Execute the query
         mycursor.execute(query, val)
         history = mycursor.fetchall()
 
@@ -351,7 +342,7 @@ class Bankapp():
             
         else:
             print("\nType       Amount     Sender               Receiver     Date/Time")
-            print('-' * 75)  # Adjusted to match the width of the columns
+            print('-' * 75) 
             for record in history:
                 transaction_type, amount, sender, receiver, transaction_date = record
                 receiver = receiver if receiver else "N/A"
@@ -360,7 +351,31 @@ class Bankapp():
         print(f"An error occurred: {e}")
     
     input('\nPress Enter to return to dashboard...')
-    self.dashboard2()  # Ensure this method is correctly defined
+    self.dashboard2() 
+
+   def Delete(self):
+    self.email = input('Email: ')
+
+    query =  "SELECT email FROM customer WHERE email = %s"
+    val = (self.email,)
+    mycursor.execute(query, val)
+    detail = mycursor.fetchone()
+    if detail:
+           self.email = detail[0]
+           print(self.fullname, self.balance)
+    else:
+           print('Incorrect email or password.\nKindly input the correct details')
+           self.dashboard2()
+    user = input('Do you want to delete your account ? (yes/no): ').strip().lower()
+    if user == 'yes':
+            query = "DELETE FROM customer WHERE email = %s"
+            val = (self.email,)
+            mycursor.execute(query, val)
+            print('Account deleted')
+            self.dashboard()
+    else:
+            self.dashboard()
+
 
 
             
